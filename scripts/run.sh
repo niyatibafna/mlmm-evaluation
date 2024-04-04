@@ -7,4 +7,6 @@ device=cuda
 python main.py \
     --tasks=${tasks} \
     --model_args pretrained=${model_path} \
-    --device=${device}
+    --device=${device} \
+    --limit 1000 \
+    --batch_size 8 
