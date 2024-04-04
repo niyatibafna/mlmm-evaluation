@@ -1,3 +1,4 @@
 datasets/*
 *.pyc
 lm_eval.egg-info/*
+logs/*
