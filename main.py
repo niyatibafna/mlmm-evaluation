@@ -68,7 +68,7 @@ def parse_args():
     parser.add_argument("--output_base_path", type=str, default=None)
 
     # Noise parameters
-    parser.add_argument("--all_noise_params", type=str, default="")
+    parser.add_argument("--all_noise_params_str", type=str, default="")
 
     return parser.parse_args()
 
@@ -118,7 +118,7 @@ def main():
             description_dict = json.load(f)
 
     # Parse noise parameters e.g. phonological:theta_1-0.5;syntax:theta_2-0.5
-    all_noise_params = parse_noise_params(args.all_noise_params)
+    all_noise_params = parse_noise_params(args.all_noise_params_str)
     print(f"Noise Parameters: {all_noise_params}")
     noiser_classes = get_noisers(all_noise_params)
 
@@ -146,10 +146,14 @@ def main():
 
     if args.output_path:
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+        if os.path.exists(args.output_path):
+            with open(args.output_path, "r") as f:
+                file = json.load(f)
+                file[args.all_noise_params_str] = results
+        else:
+            file = {args.all_noise_params_str: results}
         with open(args.output_path, "w") as f:
-            # Add in noise params to results
-            results['noise_params'] = all_noise_params
-            json.dump(results, f, indent=2, ensure_ascii=False)
+            json.dump(file, f, indent=2, ensure_ascii=False)
     print(evaluator.make_table(results))
 
 

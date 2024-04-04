@@ -14,12 +14,14 @@ sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/n
 from noisers.main import apply_noisers
 from noisers.main import NOISE_REGISTRY
 
+import copy
+
 def noise_llm_inputs(doc, ctx, description, task, noise_classes):
     if not noise_classes:
         return doc, ctx
     
     if isinstance(task, lm_eval.base.MultipleChoiceTask):
-        og_doc = doc.copy()
+        og_doc = copy.deepcopy(doc)
         # Remove suffix of doc["query"] from the ctx
         assert ctx.endswith(doc["query"])
         ctx_wout_query = ctx[:-len(doc["query"])]
