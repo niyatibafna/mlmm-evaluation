@@ -12,6 +12,12 @@ if os.path.exists('/mnt/localssd/'):
 
 from lm_eval import tasks, evaluator
 
+import sys
+sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
+sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
+from noisers.main import get_noisers
+
+
 logging.getLogger("openai").setLevel(logging.WARNING)
 
 
@@ -121,6 +127,8 @@ def main():
     
     print(f"Noise Parameters: {all_noise_params}")
 
+    noiser_classes = get_noisers(all_noise_params)
+
     results = evaluator.open_llm_evaluate(
         model=args.model,
         model_args=args.model_args,
@@ -134,7 +142,7 @@ def main():
         check_integrity=args.check_integrity,
         write_out=args.write_out,
         output_base_path=args.output_base_path,
-        all_noise_params=all_noise_params
+        noiser_classes=noiser_classes,
     )
 
     ### TODO: Format output file and results according to required organization

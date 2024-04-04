@@ -9,13 +9,13 @@ import lm_eval.base
 from lm_eval.utils import positional_deprecated, run_task_tests
 
 import sys
-sys.path.append('/export/b08/nbafna1/projects/llm-xlingual-robustness/')
-sys.path.append('/export/b08/nbafna1/projects/llm-xlingual-robustness/noisers/')
-from noisers.main import noiser_main as noiser_main
+sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
+sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
+from noisers.main import apply_noisers
 from noisers.main import NOISE_REGISTRY
 
-def noise_llm_inputs(doc, ctx, description, task, all_noise_params):
-    if not all_noise_params:
+def noise_llm_inputs(doc, ctx, description, task, noise_classes):
+    if not noise_classes:
         return doc, ctx
     
     if isinstance(task, lm_eval.base.MultipleChoiceTask):
@@ -37,12 +37,12 @@ def noise_llm_inputs(doc, ctx, description, task, all_noise_params):
         # ctx_wout_query = noiser_main(ctx_wout_query, all_noise_params)
 
         # Apply noise to the query
-        doc["query"] = noiser_main(doc["query"], all_noise_params)
+        doc["query"] = apply_noisers(doc["query"], noise_classes)
 
         # Construct the new context
         ctx = description + ctx_wout_query + doc["query"]
         for i, choice in enumerate(doc["choices"]):
-            doc["choices"][i] = noiser_main(choice, all_noise_params)
+            doc["choices"][i] = apply_noisers(choice, noise_classes)
         
 
     else:
@@ -74,7 +74,7 @@ def open_llm_evaluate(
     decontamination_ngrams_path=None,
     write_out=False,
     output_base_path=None,
-    all_noise_params={},
+    noiser_classes=None,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -136,7 +136,7 @@ def open_llm_evaluate(
         decontamination_ngrams_path=decontamination_ngrams_path,
         write_out=write_out,
         output_base_path=output_base_path,
-        all_noise_params=all_noise_params,
+        noiser_classes=noiser_classes,
     )
 
     # add info about the model and few shot config
@@ -167,7 +167,7 @@ def evaluate(
     decontamination_ngrams_path=None,
     write_out=False,
     output_base_path=None,
-    all_noise_params={},
+    noiser_classes=None,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -268,7 +268,7 @@ def evaluate(
             )
 
             # Apply noise to the LLM inputs:
-            doc, ctx = noise_llm_inputs(doc, ctx, description, task, all_noise_params)
+            doc, ctx = noise_llm_inputs(doc, ctx, description, task, noiser_classes)
             
             docs[(task_name, doc_id)] = doc
 
