@@ -706,6 +706,9 @@ class MultipleChoiceTask(Task):
         return " " + doc["choices"][doc["gold"]]
 
     def construct_requests(self, doc, ctx):
+
+        # The reason we have 0 here is because the loglikelihood function returns
+        # Tuple[float, bool] and we need the float
         lls = [
             rf.loglikelihood(ctx, " {}".format(choice))[0] for choice in doc["choices"]
         ]
