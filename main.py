@@ -15,7 +15,7 @@ from lm_eval import tasks, evaluator
 import sys
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
-from noisers.main import get_noisers
+from noisers.main import parse_noise_params, get_noisers
 
 
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -86,6 +86,7 @@ def pattern_match(patterns, source_list):
     return sorted(list(task_names))
 
 
+
 def main():
     args = parse_args()
 
@@ -117,16 +118,8 @@ def main():
             description_dict = json.load(f)
 
     # Parse noise parameters e.g. phonological:theta_1-0.5;syntax:theta_2-0.5
-    all_noise_params = defaultdict(dict)
-    if args.all_noise_params:
-        noise_params = args.all_noise_params.split(";")
-        for noise_param in noise_params:
-            noise_type, noise_param = noise_param.split(":")
-            noise_param = noise_param.split("-")
-            all_noise_params[noise_type][noise_param[0]] = float(noise_param[1])
-    
+    all_noise_params = parse_noise_params(args.all_noise_params)
     print(f"Noise Parameters: {all_noise_params}")
-
     noiser_classes = get_noisers(all_noise_params)
 
     results = evaluator.open_llm_evaluate(
@@ -154,6 +147,8 @@ def main():
     if args.output_path:
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
         with open(args.output_path, "w") as f:
+            # Add in noise params to results
+            results['noise_params'] = all_noise_params
             json.dump(results, f, indent=2, ensure_ascii=False)
     print(evaluator.make_table(results))
 
