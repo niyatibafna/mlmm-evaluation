@@ -4,6 +4,7 @@ import json
 import logging
 import fnmatch
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from collections import defaultdict
 

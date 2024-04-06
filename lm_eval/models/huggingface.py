@@ -434,7 +434,15 @@ class HuggingFaceAutoLM(BaseLM):
                 max_tokens=max_tokens,
                 stop=until,
             )
+            ### NB EDIT
+            # print(f"Input\n: {context[0]}")
+            # print(f"END INPUT \n\n\n\n")
+
             responses = self.tok_decode(responses.tolist())
+
+            ### NB EDIT
+            # print(f"Generated\n: {responses[0]}")
+            # print(f"END GENERATED \n\n\n\n")
 
             for response in responses:
                 # Ensure the generated responses do not contain the stop sequences.
@@ -443,6 +451,11 @@ class HuggingFaceAutoLM(BaseLM):
                 # partial caching
                 # self.cache_hook.add_partial("greedy_until", (context, until), response)
                 results.append(response)
+            
+            ### NB EDIT
+            # print(f"Results\n: {results}")
+            # print(f"END RESULTS \n\n\n\n")
+
         return reorder.get_original(results)
 
 
@@ -485,10 +498,24 @@ class AutoCausalLM(HuggingFaceAutoLM):
     ) -> TokenSequence:
         # Ensure that the context does not encroach into the `space`
         # for the generation.
+
+        ### NB EDIT
+        # print(f"self.max_gen_toks: {self.max_gen_toks}")
+        # print(f"self.max_length: {self.max_length}")
+        # print(f"inputs['input_ids'].size(1): {inputs['input_ids'].size(1)}")
+        # print(f"pad token: {self.tokenizer.eos_token_id}")
+
         input_ids = inputs["input_ids"][:, self.max_gen_toks - self.max_length:]
+        # input_ids = inputs["input_ids"][:, -10:]
+        # input_ids = inputs["input_ids"]
+
+        # print(f"input_ids.size(1): {input_ids.size(1)}")
+
         attention_mask = inputs["attention_mask"][
                          :, self.max_gen_toks - self.max_length:
                          ]
+        # attention_mask = inputs["attention_mask"][:, -10:]
+
         input_ids = input_ids.to(self.device)
         attention_mask = attention_mask.to(self.device)
 
@@ -506,8 +533,15 @@ class AutoCausalLM(HuggingFaceAutoLM):
                 stopping_criteria=stopping_criteria,
                 do_sample=False,
             )
+        # return generations
+        ### NB EDIT
+        # print(f"max_context_size: {inputs['input_ids'].size(1)}")
+        # print(f"Generations size 1: {generations.size(1)}")
+        # return generations
+        assert generations.size(1) > input_ids.size(1)
+            
         return utils.select_continuation_from_batch_left_padding(
-            generations, max_context_size=inputs["input_ids"].size(1)
+            generations, max_context_size=input_ids.size(1)
         )
 
 

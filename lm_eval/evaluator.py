@@ -1,3 +1,5 @@
+debug = True
+
 import collections
 import itertools
 import numpy as np
@@ -16,7 +18,44 @@ from noisers.main import NOISE_REGISTRY
 
 import copy
 
-def noise_llm_inputs(doc, ctx, description, task, noise_classes):
+def noise_llm_inputs_before(doc, task, noise_classes):
+    '''
+    This is in case we want to noise the input before constructing the context.
+    This could be because we are simulating a super low-resource language,
+    and saying that we have the shots in a related high-resource language.
+    '''
+    if not noise_classes:
+        return doc
+    if isinstance(task, lm_eval.base.MultipleChoiceTask):
+        og_doc = copy.deepcopy(doc)
+        # Apply noise to the query
+        doc["query"] = apply_noisers(doc["query"], noise_classes)
+        # Apply noise to the choices
+        for i, choice in enumerate(doc["choices"]):
+            doc["choices"][i] = apply_noisers(choice, noise_classes)
+
+    elif isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
+        ## The doc is a dict with keys "src" and "ref"
+        ## doc["ref"] could be a single string or an array.
+        og_doc = copy.deepcopy(doc)
+        doc["src"] = apply_noisers(doc["src"], noise_classes)
+
+        # Naturally, we do not noise the reference.
+
+    else:
+        raise NotImplementedError(f"Task type {type(task)} not supported yet.")
+    if debug:
+        print(f"PRINTING DOC AFTER NOISING: {doc}")
+        print(f"Task: {task}")
+        print(f"Original src: {og_doc['src']}")
+        print(f"Noised Query: {doc['src']}")
+        print(f"Reference: {doc['ref']}")
+        print(f"\n\n\n")
+    
+    return doc    
+
+
+def noise_llm_inputs_after(doc, ctx, description, task, noise_classes):
     if not noise_classes:
         return doc, ctx
     
@@ -30,13 +69,8 @@ def noise_llm_inputs(doc, ctx, description, task, noise_classes):
             assert ctx_wout_query.startswith(description)
             ctx_wout_query = ctx_wout_query[len(description):]
 
-        # Apply noise to the context if we want to
-        ## For now, we only apply noise functions to the query and choices in the doc
-        ## (and not the few shot context.)
-        ## This is because we are simulating a super low-resource language,
-        ## and saying that we have the shots in a related high-resource language.
-            
-        # ctx_wout_query = noiser_main(ctx_wout_query, all_noise_params)
+        # Apply noise to the context if we want to            
+        ctx_wout_query = apply_noisers(ctx_wout_query, noise_classes)
 
         # Apply noise to the query
         doc["query"] = apply_noisers(doc["query"], noise_classes)
@@ -45,18 +79,26 @@ def noise_llm_inputs(doc, ctx, description, task, noise_classes):
         ctx = description + ctx_wout_query + doc["query"]
         for i, choice in enumerate(doc["choices"]):
             doc["choices"][i] = apply_noisers(choice, noise_classes)
-        
 
     else:
         raise NotImplementedError(f"Task type {type(task)} not supported yet.")
+        # In the translation case, we only support noising the input (not the few shot context)
+        # for now
+        # If we want want to support noising the context, we would need to make sure not to mess
+        # with words "<language>", "phrase"
+        # The context looks like this:
+        # "{src_lang} phrase: " + doc["src"] + f"\n{tar_lang} phrase: {doc["ref"]}"  
+        # If doc["ref"] contains multiple translations, the first one is chosen for the few shot context
+
     
-    print(f"PRINTING DOC AFTER NOISING: {doc}")
-    print(f"Task: {task}")
-    print(f"Original Query: {og_doc['query']}")
-    print(f"Noised Query: {doc['query']}")
-    print(f"Original Choices: {og_doc['choices']}")
-    print(f"Noised Choices: {doc['choices']}")
-    print(f"\n\n\n")
+    if debug:
+        print(f"PRINTING DOC AFTER NOISING: {doc}")
+        print(f"Task: {task}")
+        print(f"Original Query: {og_doc['query']}")
+        print(f"Noised Query: {doc['query']}")
+        print(f"Original Choices: {og_doc['choices']}")
+        print(f"Noised Choices: {doc['choices']}")
+        print(f"\n\n\n")
 
     return doc, ctx
     
@@ -201,6 +243,11 @@ def evaluate(
         for name, task in task_dict.items()
         if (task.has_validation_docs() or task.has_test_docs())
     ]
+    if debug:
+        print(f"Task Dict Items: {task_dict_items}")
+        for name, task in task_dict.items():
+            print(task)
+            print(task.NUM_FEW_SHOT)
 
     results = collections.defaultdict(dict)
     versions = collections.defaultdict(dict)
@@ -264,13 +311,17 @@ def evaluate(
 
             # The following function chooses shots and constructs the context
             # as ctx = description + labeled_examples + example
-            # where example is doc["query"]
+            # where example is doc["query"] in the case of MultipleChoiceTask
+            
+            # Only noise the doc, not the few shot examples
+            doc = noise_llm_inputs_before(doc, task, noiser_classes)
+
             ctx = task.fewshot_context(
                 doc=doc, num_fewshot=num_fewshot, rnd=rnd, description=description
             )
 
-            # Apply noise to the LLM inputs:
-            doc, ctx = noise_llm_inputs(doc, ctx, description, task, noiser_classes)
+            # Noise the doc and the few shot examples in the context
+            # doc, ctx = noise_llm_inputs_after(doc, ctx, description, task, noiser_classes)
             
             docs[(task_name, doc_id)] = doc
 
@@ -331,6 +382,7 @@ def evaluate(
         #       they should end up next to each other.
 
         print("Running", reqtype, "requests")
+        print(lm)
         resps = getattr(lm, reqtype)([req.args for req in reqs])
         # req.index here specifies which index of the response list to use
         # For example, the loglikelihood function returns
@@ -375,6 +427,7 @@ def evaluate(
         # we will do argmax over the loglikelihoods
         # and compare to the gold answer, finally calculating accuracy.
         metrics = task.process_results(doc, requests)
+        print(f"Metrics: {metrics}")
         for metric, value in metrics.items():
             vals[(task_name, metric)].append(value)
 
@@ -386,6 +439,7 @@ def evaluate(
                 if doc_id not in overlaps[task_name]:
                     vals[(task_name, metric + decontaminate_suffix)].append(value)
 
+        print(f"vals: {vals}")
     # aggregate results
     for (task_name, metric), items in vals.items():
         task = task_dict[task_name]
@@ -395,6 +449,8 @@ def evaluate(
                 decontaminate_suffix, ""
             )  # decontaminated still uses the same metric
         results[task_name][metric] = task.aggregation()[real_metric](items)
+
+        print(f"results     : {results}")
 
         # hotfix: bleu, chrf, ter seem to be really expensive to bootstrap
         # so we run them less iterations. still looking for a cleaner way to do this

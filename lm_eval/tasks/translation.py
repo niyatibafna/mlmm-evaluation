@@ -116,6 +116,7 @@ def create_translation_task(dataset, language_pair, version=0):
 
 class GeneralTranslationTask(Task):
     VERSION = 0
+    NUM_FEW_SHOT = 25
 
     # e.g. ("wmt14", "fr-en")
     def __init__(self, sacrebleu_dataset, sacrebleu_language_pair=None):
@@ -184,7 +185,7 @@ class GeneralTranslationTask(Task):
             language description, as well as the few shot examples, and the question
             part of the document for `doc`.
         """
-        return rf.greedy_until(ctx, {"until": ["\n"]})
+        return rf.greedy_until(ctx, {"until": ["\n\n"]})
 
     def process_results(self, doc, results):
         # Add spaces between words for BLEU score calculation of target languages like Chinese
