@@ -111,6 +111,13 @@ def create_translation_task(dataset, language_pair, version=0):
         def __init__(self):
             super().__init__(dataset, language_pair)
 
+    class NLLBTranslationTask(NLLBGeneralTranslationTask):
+        def __init__(self):
+            super().__init__(language_pair)
+
+    # Check if the dataset is from NLLB
+    if dataset == "flores200":
+        return NLLBTranslationTask
     return TranslationTask
 
 
@@ -233,6 +240,69 @@ class GeneralTranslationTask(Task):
         tar_lang = code_to_language(language_codes[1])
         return f"{self.sacrebleu_dataset.upper()} {src_lang} to {tar_lang} Task"
 
+class NLLBGeneralTranslationTask(GeneralTranslationTask):
+
+    # For now, we are hardcoding the paths to the NLLB dataset
+    # And assuming that the data are already downloaded at that path.
+
+    def __init__(self, language_pair=None):
+        lang_to_filename = {
+            "eng" : "eng_Latn",
+            "hin" : "hin_Deva",
+            "arb" : "ara_Arab",
+            "deu" : "deu_Latn",
+        }
+        # This is hardcoded for now
+        self.nllb_dataset_path = "/export/b08/nbafna1/data/flores200_dataset/"
+
+        self.language_pair = language_pair
+
+        self.src = language_pair.split("-")[0]
+        self.tgt = language_pair.split("-")[1]
+
+        self.src_file = f"{self.nllb_dataset_path}/devtest/{lang_to_filename[self.src]}.devtest"
+        self.ref_file = f"{self.nllb_dataset_path}/devtest/{lang_to_filename[self.tgt]}.devtest"
+
+        self.download()
+        self._training_docs = None
+        self._fewshot_docs = None
+
+    def process_results(self, doc, results):
+        # Add spaces between words for BLEU score calculation of target languages like Chinese
+        tar_lang_code = self.tgt
+        if self.tgt in NO_SPACE_LANG:
+            doc["ref"] = NO_SPACE_LANG[tar_lang_code]([doc["ref"]])[0]
+            results = NO_SPACE_LANG[tar_lang_code](results)
+
+        # These metrics are corpus-level not sentence level, so we'll hide the
+        # results in this dict and compute the corpus score in the aggregate method
+        ref_pred = (doc["ref"], results)
+        return {
+            "bleu": ref_pred,
+            "chrf": ref_pred,
+            "ter": ref_pred,
+        }
+
+
+    def download(self):
+
+        ### TODO : Add download code here
+        # Assumed already downloaded at the path
+        self.src_data, self.ref_data = [
+            [line.rstrip() for line in open(file, 'r')]
+            for file in (self.src_file, self.ref_file)
+        ]
+
+    def doc_to_text(self, doc):
+        src_lang = code_to_language(self.src)
+        tar_lang = code_to_language(self.tgt)
+        return f"{src_lang} phrase: " + doc["src"] + f"\n{tar_lang} phrase:"
+
+    def __str__(self):
+        src_lang = code_to_language(self.src)
+        tar_lang = code_to_language(self.tgt)
+        return f"{'flores200'.upper()} {src_lang} to {tar_lang} Task"
+
 
 ########################################
 # Util
@@ -243,3 +313,10 @@ def code_to_language(code):
     # key is alpha_2 or alpha_3 depending on the code length
     language_tuple = pycountry.languages.get(**{f"alpha_{len(code)}": code})
     return language_tuple.name
+
+
+# # Test
+# flores200_translation_benchmarks = {
+#     "flores200" :  ["hin-eng", "deu-eng"]
+# }
+# tasks = create_tasks_from_benchmarks(flores200_translation_benchmarks)
