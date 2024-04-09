@@ -82,6 +82,11 @@ selected_translation_benchmarks = {
     "iwslt17": ["en-ar", "ar-en"],  # Arabic
 }
 
+### TODO: Add all language pairs of interest
+flores200_translation_benchmarks = {
+    "flores200" :  ["hin-eng", "deu-eng"]
+}
+
 # 319 total
 all_translation_benchmarks = {
     ts: sacrebleu.get_langpairs_for_testset(ts)
@@ -201,6 +206,8 @@ TASK_REGISTRY = {
     **translation.create_tasks_from_benchmarks(gpt3_translation_benchmarks),
     # chef's selection, mostly wmt20
     **translation.create_tasks_from_benchmarks(selected_translation_benchmarks),
+    # FloRes200 
+    **translation.create_tasks_from_benchmarks(flores200_translation_benchmarks),
     # Word Scrambling and Manipulation Tasks
     "anagrams1": unscramble.Anagrams1,
     "anagrams2": unscramble.Anagrams2,
