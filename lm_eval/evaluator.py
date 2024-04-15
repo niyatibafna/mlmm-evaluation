@@ -43,7 +43,9 @@ def noise_llm_inputs_before(doc, task, noise_classes):
         # Naturally, we do not noise the reference.
 
     else:
-        raise NotImplementedError(f"Task type {type(task)} not supported yet.")
+        # raise NotImplementedError(f"Task type {type(task)} not supported yet.")
+        pass
+    
     if debug:
         print(f"PRINTING DOC AFTER NOISING: {doc}")
         print(f"Task: {task}")
