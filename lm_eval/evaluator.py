@@ -1,4 +1,5 @@
-debug = True
+debug = False
+debug_trans = False
 
 import collections
 import itertools
@@ -26,8 +27,8 @@ def noise_llm_inputs_before(doc, task, noise_classes):
     '''
     if not noise_classes:
         return doc
+    og_doc = copy.deepcopy(doc)
     if isinstance(task, lm_eval.base.MultipleChoiceTask):
-        og_doc = copy.deepcopy(doc)
         # Apply noise to the query
         doc["query"] = apply_noisers(doc["query"], noise_classes)
         # Apply noise to the choices
@@ -37,7 +38,6 @@ def noise_llm_inputs_before(doc, task, noise_classes):
     elif isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
         ## The doc is a dict with keys "src" and "ref"
         ## doc["ref"] could be a single string or an array.
-        og_doc = copy.deepcopy(doc)
         doc["src"] = apply_noisers(doc["src"], noise_classes)
 
         # Naturally, we do not noise the reference.
@@ -46,7 +46,7 @@ def noise_llm_inputs_before(doc, task, noise_classes):
         # raise NotImplementedError(f"Task type {type(task)} not supported yet.")
         pass
     
-    if debug:
+    if debug_trans:
         print(f"PRINTING DOC AFTER NOISING: {doc}")
         print(f"Task: {task}")
         print(f"Original src: {og_doc['src']}")
