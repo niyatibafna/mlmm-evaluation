@@ -605,11 +605,115 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
                     ),
                 )
             )
-            contexts, conts = utils.split_and_pad_windows(
+
+
+            def split_and_pad_windows(rolling_token_windows, pad_token_id, max_seq_len):
+                """
+                Splits the rolling token windows into a tuple of (input_tokens, pred_tokens) and pads the input_tokens
+                to max_seq_len
+                """
+                inps = []
+                inplens = []
+                conts = []
+                cont_toks_list = []
+                padding_len_inp = None
+                padding_len_cont = None
+                for context_enc, continuation_enc in rolling_token_windows:
+                    # when too long to fit in context, truncate from the left
+                    if self.AUTO_MODEL_CLASS == transformers.AutoModelForCausalLM:
+                        inp = torch.tensor(
+                            (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1],
+                            dtype=torch.long,
+                            device=self.device,
+                        )
+                        (inplen,) = inp.shape
+                    elif self.AUTO_MODEL_CLASS == transformers.AutoModelForSeq2SeqLM:
+                        inp = torch.tensor(
+                            (context_enc)[-self.max_length :],
+                            dtype=torch.long,
+                            device=self.device,
+                        )
+                        (inplen,) = inp.shape
+
+                        # build encoder attn masks
+                        # encoder_attns.append(torch.ones_like(inp))
+
+                        cont = torch.tensor(
+                            (continuation_enc)[-self.max_length :],
+                            # TODO: left-shift these?
+                            # TODO: our code assumes we never end up truncating conts for either model type
+                            dtype=torch.long,
+                            device=self.device,
+                        )
+                        (contlen,) = cont.shape
+
+                        conts.append(cont)
+
+                        padding_len_cont = (
+                            max(padding_len_cont, contlen)
+                            if padding_len_cont is not None
+                            else contlen
+                        )
+
+                    padding_len_inp = (
+                        max(padding_len_inp, inplen)
+                        if padding_len_inp is not None
+                        else inplen
+                    )
+
+
+                    inps.append(inp)  # [1, inp_length]
+                    cont_toks_list.append(continuation_enc)
+                    inplens.append(inplen)
+
+                # Pad
+                if self.AUTO_MODEL_CLASS == transformers.AutoModelForCausalLM:
+                    inps = torch.stack(
+                        [
+                            F.pad(
+                                inp,
+                                (0, max_seq_len - inplen),
+                                value=pad_token_id,
+                            )
+                            for inp, inplen in zip(inps, inplens)
+                        ]
+                    )
+                elif self.AUTO_MODEL_CLASS == transformers.AutoModelForSeq2SeqLM:
+                    inps = torch.stack(
+                        [
+                            F.pad(
+                                inp,
+                                (0, max_seq_len - inplen),
+                                value=pad_token_id,
+                            )
+                            for inp, inplen in zip(inps, inplens)
+                        ]
+                    )
+                    conts = torch.stack(
+                        [
+                            F.pad(
+                                cont,
+                                (0, max_seq_len - contlen),
+                                value=pad_token_id,
+                            )
+                            for cont, contlen in zip(conts, [len(x) for x in cont_toks_list])
+                        ]
+                    )
+
+
+                return inps, conts
+
+            # contexts, conts = utils.split_and_pad_windows(
+            #     rolling_token_windows,
+            #     pad_token_id=self.eot_token_id,
+            #     max_seq_len=self.max_length,
+            # )
+            contexts, conts = split_and_pad_windows(
                 rolling_token_windows,
                 pad_token_id=self.eot_token_id,
                 max_seq_len=self.max_length,
             )
+
             # Manually create BatchEncoding tensors with attention masks as
             # expected by `self._model_call` in `self._loglikelihood_tokens`.
             contexts_enc = torch.Tensor(contexts).long()
