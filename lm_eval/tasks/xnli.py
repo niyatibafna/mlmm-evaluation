@@ -49,7 +49,7 @@ class XNLIBase(Task):
     NEUTRAL_LABEL = None  # 'Also'
     CONTRADICTION_LABEL = None  # 'No'
 
-    NUM_FEW_SHOT = 25
+    NUM_FEW_SHOT = 10
 
     def has_training_docs(self):
         return True
