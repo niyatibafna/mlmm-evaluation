@@ -84,7 +84,7 @@ selected_translation_benchmarks = {
 
 ### TODO: Add all language pairs of interest
 flores200_translation_benchmarks = {
-    "flores200" :  ["hin-eng", "deu-eng"]
+    "flores200" :  ["hi-en", "de-en", "es-en", "id-en", "ar-en", "ru-en", "en-en"]
 }
 
 # 319 total
