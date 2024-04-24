@@ -1,3 +1,4 @@
+debug_batch_size = True
 import math
 import torch
 import torch.nn.functional as F
@@ -782,6 +783,8 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
     def _model_call(
             self, inputs: TokenSequence, labels: Optional[TokenSequence] = None
     ) -> TokenSequence:
+        if debug_batch_size:
+            print(f"inputs: {inputs.size()}")
         return self.model(**inputs, labels=labels["input_ids"])
 
     def _model_generate(
