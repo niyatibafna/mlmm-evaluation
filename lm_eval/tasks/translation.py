@@ -123,7 +123,7 @@ def create_translation_task(dataset, language_pair, version=0):
 
 class GeneralTranslationTask(Task):
     VERSION = 0
-    NUM_FEW_SHOT = 25
+    NUM_FEW_SHOT = 10
 
     # e.g. ("wmt14", "fr-en")
     def __init__(self, sacrebleu_dataset, sacrebleu_language_pair=None):
@@ -247,10 +247,13 @@ class NLLBGeneralTranslationTask(GeneralTranslationTask):
 
     def __init__(self, language_pair=None):
         lang_to_filename = {
-            "eng" : "eng_Latn",
-            "hin" : "hin_Deva",
-            "arb" : "ara_Arab",
-            "deu" : "deu_Latn",
+            "en" : "eng_Latn",
+            "hi" : "hin_Deva",
+            "ar" : "arb_Arab",
+            "de" : "deu_Latn",
+            "es" : "spa_Latn",
+            "id" : "ind_Latn",
+            "ru" : "rus_Cyrl",
         }
         # This is hardcoded for now
         self.nllb_dataset_path = "/export/b08/nbafna1/data/flores200_dataset/"
@@ -315,8 +318,3 @@ def code_to_language(code):
     return language_tuple.name
 
 
-# # Test
-# flores200_translation_benchmarks = {
-#     "flores200" :  ["hin-eng", "deu-eng"]
-# }
-# tasks = create_tasks_from_benchmarks(flores200_translation_benchmarks)
