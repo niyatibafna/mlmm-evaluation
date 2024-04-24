@@ -27,7 +27,7 @@ def noise_llm_inputs_before(doc, task, noise_classes):
     '''
     if not noise_classes:
         return doc
-    og_doc = copy.deepcopy(doc)
+    orig_doc = copy.deepcopy(doc)
     if isinstance(task, lm_eval.base.MultipleChoiceTask):
         # Apply noise to the query
         doc["query"] = apply_noisers(doc["query"], noise_classes)
@@ -49,7 +49,7 @@ def noise_llm_inputs_before(doc, task, noise_classes):
     if debug_trans:
         print(f"PRINTING DOC AFTER NOISING: {doc}")
         print(f"Task: {task}")
-        print(f"Original src: {og_doc['src']}")
+        print(f"Original src: {orig_doc['src']}")
         print(f"Noised Query: {doc['src']}")
         print(f"Reference: {doc['ref']}")
         print(f"\n\n\n")
@@ -316,6 +316,7 @@ def evaluate(
             # where example is doc["query"] in the case of MultipleChoiceTask
             
             # Only noise the doc, not the few shot examples
+            original_doc = copy.deepcopy(doc)
             doc = noise_llm_inputs_before(doc, task, noiser_classes)
 
             ctx = task.fewshot_context(
@@ -350,6 +351,15 @@ def evaluate(
 
             if not isinstance(reqs, (list, tuple)):
                 reqs = [reqs]
+
+            if isinstance(task, lm_eval.base.MultipleChoiceTask):
+                # Find prompt by removing self.doc_to_target(doc) from the prompt
+                prompt = ctx.replace(task.doc_to_target(doc), "")
+                prompt_details[-1]["prompt"] = prompt
+                # Write out query and noised query for multiple choice tasks
+                prompt_details[-1][f"query"] = original_doc["query"]
+                prompt_details[-1][f"noised_query"] = doc["query"]
+
             for i, req in enumerate(reqs):
                 requests[req.request_type].append(req)
                 # i: index in requests for a single task instance
@@ -357,12 +367,20 @@ def evaluate(
                 requests_origin[req.request_type].append((i, task_name, doc, doc_id))
 
                 if write_out:
-                    prompt_details[-1][f"prompt_{i}"] = "".join(
+                    
+                    if isinstance(task, lm_eval.base.MultipleChoiceTask):
+                        # Write out choices and noised choices for multiple choice tasks
+                        prompt_details[-1][f"choice_{i}"] = original_doc["choices"][i]
+                        prompt_details[-1][f"noised_choice_{i}"] = doc["choices"][i]
+                    else:
+                        prompt_details[-1][f"prompt_{i}"] = "".join(
                         (map(lambda x: "".join(x), req.args))
-                    )
+                        )
+            
 
         if write_out:
             write_out_info[task_name] = prompt_details
+                
 
     # Compare all tasks/sets at once to ensure a single training set scan
     if decontaminate:
@@ -429,7 +447,8 @@ def evaluate(
         # we will do argmax over the loglikelihoods
         # and compare to the gold answer, finally calculating accuracy.
         metrics = task.process_results(doc, requests)
-        print(f"Metrics: {metrics}")
+        if debug:
+            print(f"Metrics: {metrics}")
         for metric, value in metrics.items():
             vals[(task_name, metric)].append(value)
 
@@ -441,7 +460,7 @@ def evaluate(
                 if doc_id not in overlaps[task_name]:
                     vals[(task_name, metric + decontaminate_suffix)].append(value)
 
-        print(f"vals: {vals}")
+        # print(f"vals: {vals}")
     # aggregate results
     for (task_name, metric), items in vals.items():
         task = task_dict[task_name]
