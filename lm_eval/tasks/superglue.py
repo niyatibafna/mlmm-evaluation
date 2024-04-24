@@ -162,6 +162,8 @@ class Copa(Task):
     DATASET_PATH = "super_glue"
     DATASET_NAME = "copa"
 
+    NUM_FEW_SHOT = 10
+
     def has_training_docs(self):
         return True
 

@@ -38,6 +38,8 @@ class StoryCloze(Task):
     DATASET_PATH = "story_cloze"
     DATASET_NAME = None
 
+    NUM_FEW_SHOT = 10
+
     def __init__(self, data_dir: str):
         """
         StoryCloze is not publicly available. You must download the data by

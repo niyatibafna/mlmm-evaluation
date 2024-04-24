@@ -35,6 +35,7 @@ class Winogrande(Task):
     DATASET_NAME = "winogrande_xl"
 
     answer_to_num = {"1": 0, "2": 1}
+    NUM_FEW_SHOT = 10
 
     def has_training_docs(self):
         return True
