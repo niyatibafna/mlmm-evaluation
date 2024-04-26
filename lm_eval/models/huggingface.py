@@ -1,4 +1,4 @@
-debug_batch_size = True
+debug_batch_size = False
 import math
 import torch
 import torch.nn.functional as F
