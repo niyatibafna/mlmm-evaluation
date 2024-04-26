@@ -86,6 +86,24 @@ def pattern_match(patterns, source_list):
             task_names.add(matching)
     return sorted(list(task_names))
 
+def build_description_dict(task_names):
+    '''
+    Build a description dictionary for the tasks in task_names, containing custom descriptions for each task.
+    '''
+    description_dict = dict()
+    for task_name in task_names:
+        if "flores" in task_name:
+            description_dict[task_name] = "Translate into English:"
+        elif "story_cloze" in task_name:
+            description_dict[task_name] = "Choose the correct ending to the story: "
+        elif "arc" in task_name:
+            description_dict[task_name] = "Choose the correct answer:"
+        elif "hellaswag" in task_name:
+            description_dict[task_name] = "Choose the correct continuation:"
+        elif "mmlu" in task_name:
+            description_dict[task_name] = "Choose the correct answer:"
+
+    return description_dict
 
 
 def main():
@@ -117,6 +135,8 @@ def main():
     if args.description_dict_path:
         with open(args.description_dict_path, "r") as f:
             description_dict = json.load(f)
+    else:
+        description_dict = build_description_dict(task_names)
 
     # Parse noise parameters e.g. phonological:theta_1-0.5;syntax:theta_2-0.5
     all_noise_params = parse_noise_params(args.all_noise_params_str)
