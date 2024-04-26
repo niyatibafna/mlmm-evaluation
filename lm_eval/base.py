@@ -696,7 +696,11 @@ class Task(abc.ABC):
             )
 
         example = self.doc_to_text(doc)
-        return description + labeled_examples + example
+        # return description + labeled_examples + example
+
+        ### Putting the description right before the example, so that it's not truncated in case 
+        ### the context is too long.
+        return labeled_examples + description + example
 
 
 class MultipleChoiceTask(Task):
