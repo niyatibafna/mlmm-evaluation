@@ -123,7 +123,7 @@ def create_translation_task(dataset, language_pair, version=0):
 
 class GeneralTranslationTask(Task):
     VERSION = 0
-    NUM_FEW_SHOT = 10
+    NUM_FEW_SHOT = 5
 
     # e.g. ("wmt14", "fr-en")
     def __init__(self, sacrebleu_dataset, sacrebleu_language_pair=None):
