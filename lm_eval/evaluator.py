@@ -1,5 +1,5 @@
 debug = False
-debug_trans = False
+debug_trans = True
 
 import collections
 import itertools
@@ -19,9 +19,52 @@ from noisers.main import NOISE_REGISTRY
 
 import copy
 
+def write_out_task_dataset(doc, task, file_obj):
+
+    if isinstance(task, lm_eval.base.MultipleChoiceTask):
+        file_obj.write(f"{doc['query']}\n")
+        for choice in doc["choices"]:
+            file_obj.write(f"{choice}\n")
+        file_obj.write("\n")
+        
+    elif isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
+        ## The doc is a dict with keys "src" and "ref"
+        ## doc["ref"] could be a single string or an array.
+        file_obj.write(f"{doc['src']}\n")
+        if isinstance(doc["ref"], str):
+            file_obj.write(f"{doc['ref']}\n")
+        else:
+            for ref in doc["ref"]:
+                file_obj.write(f"{ref}\n")
+
+    elif isinstance(task, lm_eval.tasks.storycloze.StoryCloze):
+
+        file_obj.write(f"{doc['input_sentence_1']}\n")
+        file_obj.write(f"{doc['input_sentence_2']}\n")
+        file_obj.write(f"{doc['input_sentence_3']}\n")
+        file_obj.write(f"{doc['input_sentence_4']}\n")
+        file_obj.write(f"{doc['sentence_quiz1']}\n")
+        file_obj.write(f"{doc['sentence_quiz2']}\n")
+        file_obj.write("\n")
+    
+    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase):
+
+        file_obj.write(f"{doc['premise']}\n")
+        file_obj.write(f"{doc['hypothesis']}\n")
+        file_obj.write(f"{doc['label']}\n")
+        file_obj.write("\n")
+
+    else:
+        # raise NotImplementedError(f"Task type {type(task)} not supported yet.")
+        pass
+
+
+
+
 def noise_llm_inputs_before(doc, task, noise_classes):
     '''
-    This is in case we want to noise the input before constructing the context.
+    This is in case we want to noise the input before constructing the context i.e. we only noise the  doc
+    but not the context and description
     This could be because we are simulating a super low-resource language,
     and saying that we have the shots in a related high-resource language.
     '''
@@ -38,22 +81,61 @@ def noise_llm_inputs_before(doc, task, noise_classes):
     elif isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
         ## The doc is a dict with keys "src" and "ref"
         ## doc["ref"] could be a single string or an array.
+
+        if debug_trans:
+            print(f"PRINTING DOC BEFORE NOISING: {doc}")
+            print(f"Task: {task}")
+            print(f"Original src: {doc['src']}")
+            print(f"Reference: {doc['ref']}")
+            print(f"\n\n\n")
         doc["src"] = apply_noisers(doc["src"], noise_classes)
+        if debug_trans:
+            print(f"PRINTING DOC AFTER NOISING: {doc}")
+            print(f"Task: {task}")
+            print(f"Original src: {orig_doc['src']}")
+            print(f"Noised Query: {doc['src']}")
+            print(f"Reference: {doc['ref']}")
+            print(f"\n\n\n")
+
 
         # Naturally, we do not noise the reference.
 
+    elif isinstance(task, lm_eval.tasks.storycloze.StoryCloze):
+
+        # Noise the four sentence story, and then the two continuations
+        doc["input_sentence_1"] = apply_noisers(doc["input_sentence_1"], noise_classes)
+        doc["input_sentence_2"] = apply_noisers(doc["input_sentence_2"], noise_classes)
+        doc["input_sentence_3"] = apply_noisers(doc["input_sentence_3"], noise_classes)
+        doc["input_sentence_4"] = apply_noisers(doc["input_sentence_4"], noise_classes)
+
+        doc["sentence_quiz1"] = apply_noisers(doc["sentence_quiz1"], noise_classes)
+        doc["sentence_quiz2"] = apply_noisers(doc["sentence_quiz2"], noise_classes)
+    
+    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase):
+
+        # Noise the premise and hypothesis
+        doc["premise"] = apply_noisers(doc["premise"], noise_classes)
+        doc["hypothesis"] = apply_noisers(doc["hypothesis"], noise_classes)
+
+        # We will also noise the language specific entailment words
+
+        ##### NOTE: This only makes sense for noisers that apply the same noise to a word over multiple occurrences.
+        ##### Otherwise, this becomes weird. 
+
+        # QUESTION_WORD = None  # 'right'
+        # ENTAILMENT_LABEL = None  # 'Yes'
+        # NEUTRAL_LABEL = None  # 'Also'
+        # CONTRADICTION_LABEL = None  # 'No'
+        doc["label"] = apply_noisers(doc["label"], noise_classes)
+        task.QUESTION_WORD = apply_noisers(task.QUESTION_WORD, noise_classes)
+        task.ENTAILMENT_LABEL = apply_noisers(task.ENTAILMENT_LABEL, noise_classes)
+        task.NEUTRAL_LABEL = apply_noisers(task.NEUTRAL_LABEL, noise_classes)
+        task.CONTRADICTION_LABEL = apply_noisers(task.CONTRADICTION_LABEL, noise_classes)
+        
     else:
         # raise NotImplementedError(f"Task type {type(task)} not supported yet.")
         pass
-    
-    if debug_trans:
-        print(f"PRINTING DOC AFTER NOISING: {doc}")
-        print(f"Task: {task}")
-        print(f"Original src: {orig_doc['src']}")
-        print(f"Noised Query: {doc['src']}")
-        print(f"Reference: {doc['ref']}")
-        print(f"\n\n\n")
-    
+        
     return doc    
 
 
@@ -121,6 +203,7 @@ def open_llm_evaluate(
     write_out=False,
     output_base_path=None,
     noiser_classes=None,
+    dataset_outfile=None,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -157,16 +240,18 @@ def open_llm_evaluate(
 
     assert tasks != [], "No tasks specified"
 
-    if isinstance(model, str):
-        if model_args is None:
-            model_args = ""
-        lm = lm_eval.models.get_model(model).create_from_arg_string(
-            model_args, {"batch_size": batch_size, "device": device}
-        )
+    if not dataset_outfile:
+        if isinstance(model, str):
+            if model_args is None:
+                model_args = ""
+            lm = lm_eval.models.get_model(model).create_from_arg_string(
+                model_args, {"batch_size": batch_size, "device": device}
+            )
+        else:
+            assert isinstance(model, lm_eval.base.LM)
+            lm = model
     else:
-        assert isinstance(model, lm_eval.base.LM)
-        lm = model
-
+        lm = None
     task_dict = lm_eval.tasks.get_task_dict(tasks)
 
     if check_integrity:
@@ -183,6 +268,7 @@ def open_llm_evaluate(
         write_out=write_out,
         output_base_path=output_base_path,
         noiser_classes=noiser_classes,
+        dataset_outfile=dataset_outfile,
     )
 
     # add info about the model and few shot config
@@ -214,6 +300,7 @@ def evaluate(
     write_out=False,
     output_base_path=None,
     noiser_classes=None,
+    dataset_outfile=None,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -271,6 +358,7 @@ def evaluate(
     docs_for_decontamination = collections.defaultdict(list)
 
     # get lists of each type of request
+    file_obj = open(dataset_outfile, "w") if dataset_outfile else None
     for task_name, task, num_fewshot in task_dict_items:
         versions[task_name] = task.VERSION
         # default to test doc, fall back to val doc if validation unavailable
@@ -311,6 +399,12 @@ def evaluate(
                     task.doc_to_decontamination_query(doc)
                 )
 
+            ##### Running only for writing out task dataset #######
+            if dataset_outfile:
+                write_out_task_dataset(doc, task, file_obj)
+                continue
+            ##### Normal things continue #######
+
             # The following function chooses shots and constructs the context
             # as ctx = description + labeled_examples + example
             # where example is doc["query"] in the case of MultipleChoiceTask
@@ -319,9 +413,14 @@ def evaluate(
             original_doc = copy.deepcopy(doc)
             doc = noise_llm_inputs_before(doc, task, noiser_classes)
 
+            
             ctx = task.fewshot_context(
                 doc=doc, num_fewshot=num_fewshot, rnd=rnd, description=description
             )
+            ##### EDITING FEW_SHOT HERE PLEASE CHANGE BACK #####
+            # ctx = task.fewshot_context(
+            #     doc=doc, num_fewshot=0, rnd=rnd, description=description
+            # )
 
             # Noise the doc and the few shot examples in the context
             # doc, ctx = noise_llm_inputs_after(doc, ctx, description, task, noiser_classes)
@@ -354,11 +453,19 @@ def evaluate(
 
             if isinstance(task, lm_eval.base.MultipleChoiceTask):
                 # Find prompt by removing self.doc_to_target(doc) from the prompt
-                prompt = ctx.replace(task.doc_to_target(doc), "")
-                prompt_details[-1]["prompt"] = prompt
+                ## This is not necessary?
+                # prompt = ctx.replace(task.doc_to_target(doc), "")
+                prompt_details[-1]["prompt"] = ctx
                 # Write out query and noised query for multiple choice tasks
                 prompt_details[-1][f"query"] = original_doc["query"]
                 prompt_details[-1][f"noised_query"] = doc["query"]
+            
+            elif isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
+                prompt_details[-1]["prompt"] = ctx
+                # Write out source and target for translation tasks
+                prompt_details[-1][f"src"] = original_doc["src"]
+                prompt_details[-1][f"noised_src"] = doc["src"]
+                
 
             for i, req in enumerate(reqs):
                 requests[req.request_type].append(req)
@@ -367,12 +474,15 @@ def evaluate(
                 requests_origin[req.request_type].append((i, task_name, doc, doc_id))
 
                 if write_out:
-                    
+                    if isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
+                        # No choices for translation tasks
+                        continue
                     if isinstance(task, lm_eval.base.MultipleChoiceTask):
                         # Write out choices and noised choices for multiple choice tasks
                         prompt_details[-1][f"choice_{i}"] = original_doc["choices"][i]
                         prompt_details[-1][f"noised_choice_{i}"] = doc["choices"][i]
                     else:
+                        # e.g. for Winograd etc., it will write out all prompts
                         prompt_details[-1][f"prompt_{i}"] = "".join(
                         (map(lambda x: "".join(x), req.args))
                         )
@@ -381,6 +491,10 @@ def evaluate(
         if write_out:
             write_out_info[task_name] = prompt_details
                 
+
+    if dataset_outfile:
+        file_obj.close()
+        return
 
     # Compare all tasks/sets at once to ensure a single training set scan
     if decontaminate:
@@ -413,12 +527,21 @@ def evaluate(
             x if req.index is None else x[req.index] for x, req in zip(resps, reqs)
         ]
 
+        # Write out the responses and truth
         for resp, (i, task_name, doc, doc_id) in zip(resps, requests_origin[reqtype]):
             process_res_queue[(task_name, doc_id)].append((i, resp))
 
             if write_out:
-                write_out_info[task_name][doc_id][f"logit_{i}"] = resp
+                
                 task = task_dict[task_name]
+                # Model prediction for translation is a single string
+                if isinstance(task, lm_eval.tasks.translation.GeneralTranslationTask):
+                    write_out_info[task_name][doc_id][f"predicted"] = resp
+                # Otherwise, it is a logit
+                else:
+                    write_out_info[task_name][doc_id][f"logit_{i}"] = resp
+
+                # Write out truth for multiple choice tasks
                 if isinstance(task, lm_eval.base.MultipleChoiceTask):
                     write_out_info[task_name][doc_id]["truth"] = doc["gold"]
                 elif isinstance(task, lm_eval.tasks.winogrande.Winogrande):
