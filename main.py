@@ -17,6 +17,7 @@ import sys
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
 from noisers.main import parse_noise_params, get_noisers
+from noisers.utils.misc import get_lang_name
 
 
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -67,6 +68,7 @@ def parse_args():
     parser.add_argument("--check_integrity", action="store_true")
     parser.add_argument("--write_out", action="store_true", default=False)
     parser.add_argument("--output_base_path", type=str, default=None)
+    parser.add_argument("--dataset_outfile", type=str, default=None)
 
     # Noise parameters
     parser.add_argument("--all_noise_params_str", type=str, default="")
@@ -93,15 +95,28 @@ def build_description_dict(task_names):
     description_dict = dict()
     for task_name in task_names:
         if "flores" in task_name:
-            description_dict[task_name] = "Translate into English:"
+            # Get the language code from the task name
+            src_lang_code = task_name.split("-")[1]
+            tgt_lang_code = task_name.split("-")[2]
+            src_lang_name = get_lang_name(src_lang_code)
+            tgt_lang_name = get_lang_name(tgt_lang_code)
+            description_dict[task_name] = f"Translate from {src_lang_name} to {tgt_lang_name}:\n"
         elif "story_cloze" in task_name:
-            description_dict[task_name] = "Choose the correct ending to the story: "
+            # description_dict[task_name] = "Choose the correct ending to the story: "
+            description_dict[task_name] = ""
+        elif "nli" in task_name:
+            description_dict[task_name] = ""
+        ### TODO: Add custom descriptions for other tasks
         elif "arc" in task_name:
             description_dict[task_name] = "Choose the correct answer:"
         elif "hellaswag" in task_name:
             description_dict[task_name] = "Choose the correct continuation:"
         elif "mmlu" in task_name:
             description_dict[task_name] = "Choose the correct answer:"
+        else:
+            description_dict[task_name] = ""
+        print(f"TASK DESCRIPTION ON FOLLOWING LINE:")
+        print(description_dict[task_name])
 
     return description_dict
 
@@ -157,6 +172,7 @@ def main():
         write_out=args.write_out,
         output_base_path=args.output_base_path,
         noiser_classes=noiser_classes,
+        dataset_outfile=args.dataset_outfile,
     )
 
     ### TODO: Format output file and results according to required organization
@@ -175,7 +191,8 @@ def main():
             file = {args.all_noise_params_str: results}
         with open(args.output_path, "w") as f:
             json.dump(file, f, indent=2, ensure_ascii=False)
-    print(evaluator.make_table(results))
+    if results:
+        print(evaluator.make_table(results))
 
 
 if __name__ == "__main__":
