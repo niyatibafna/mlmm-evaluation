@@ -38,7 +38,7 @@ class StoryCloze(Task):
     DATASET_PATH = "story_cloze"
     DATASET_NAME = None
 
-    NUM_FEW_SHOT = 10
+    NUM_FEW_SHOT = 0
 
     def __init__(self, data_dir: str):
         """
