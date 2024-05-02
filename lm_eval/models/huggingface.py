@@ -592,9 +592,71 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
             )
         return self._loglikelihood_tokens(new_requests)
 
+    def loglikelihood_rolling_lmeval(
+        self, requests, disable_tqdm: bool = False
+    ) -> List[float]:
+        loglikelihoods = []
+        adaptive_batch_size = None
+        if self.batch_size == "auto":
+            # using rolling window with maximum context
+            print("Passed argument batch_size = auto. Detecting largest batch size")
+            batch_size = self._detect_batch_size()
+            print(f"Determined Largest batch size: {batch_size}")
+            adaptive_batch_size = batch_size
+
+        for (string,) in tqdm(
+            [req.args for req in requests], disable=(disable_tqdm or (self.rank != 0))
+        ):
+            rolling_token_windows = list(
+                map(
+                    utils.make_disjoint_window,
+                    utils.get_rolling_token_windows(
+                        token_list=self.tok_encode(string),
+                        prefix_token=self.prefix_token_id,
+                        max_seq_len=self.max_length,
+                        context_len=1,
+                    ),
+                )
+            )
+
+            # TODO: Right now, we pass single EOT token to the Encoder and the full context to the decoder, in seq2seq case
+            rolling_token_windows = [(None,) + x for x in rolling_token_windows]
+
+            pad_amnt = 0
+            if self.world_size > 1:
+                # We pad out the external document-level iterator so the inner iterator doesn't hang
+                mytensor = torch.tensor(len(rolling_token_windows), device=self.device)
+                gathered = (
+                    self.accelerator.gather(mytensor).cpu().detach().numpy().tolist()
+                )
+
+                pad_amnt = max(gathered) - gathered[self.rank]
+                if pad_amnt > 0:
+                    rolling_token_windows += pad_amnt * [rolling_token_windows[0]]
+
+            string_nll = self._loglikelihood_tokens(
+                requests=rolling_token_windows,
+                disable_tqdm=True,
+                override_bs=adaptive_batch_size,
+            )
+
+            if (self.world_size > 1) and (pad_amnt > 0):
+                string_nll = [x[0] for x in string_nll[:-pad_amnt]]
+            else:
+                # discard is_greedy
+                string_nll = [x[0] for x in string_nll]
+
+            string_nll = sum(string_nll)
+            loglikelihoods.append(string_nll)
+
+        return loglikelihoods
+
     def loglikelihood_rolling(self, requests: List[Tuple[str, str]]) -> List[float]:
         loglikelihoods = []
+        # print(f"Printing requests: {requests}")
+        # print(f"Number of requests: {len(requests)}")
         for (string,) in tqdm(requests):
+            # print(f"In loglikehood_rolling function, printing string: {string}")
             rolling_token_windows = list(
                 map(
                     utils.make_disjoint_window,
@@ -606,8 +668,6 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
                     ),
                 )
             )
-
-
             def split_and_pad_windows(rolling_token_windows, pad_token_id, max_seq_len):
                 """
                 Splits the rolling token windows into a tuple of (input_tokens, pred_tokens) and pads the input_tokens
@@ -704,16 +764,16 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
 
                 return inps, conts
 
-            # contexts, conts = utils.split_and_pad_windows(
-            #     rolling_token_windows,
-            #     pad_token_id=self.eot_token_id,
-            #     max_seq_len=self.max_length,
-            # )
-            contexts, conts = split_and_pad_windows(
+            contexts, conts = utils.split_and_pad_windows(
                 rolling_token_windows,
                 pad_token_id=self.eot_token_id,
                 max_seq_len=self.max_length,
             )
+            # contexts, conts = split_and_pad_windows(
+            #     rolling_token_windows,
+            #     pad_token_id=self.eot_token_id,
+            #     max_seq_len=self.max_length,
+            # )
 
             # Manually create BatchEncoding tensors with attention masks as
             # expected by `self._model_call` in `self._loglikelihood_tokens`.
@@ -742,6 +802,8 @@ class AutoSeq2SeqLM(HuggingFaceAutoLM):
             string_nll = [x[0] for x in string_nll]  # discard is_greedy
             string_nll = sum(string_nll)
             loglikelihoods.append(string_nll)
+        
+        # print(f"Number of loglikelihoods: {len(loglikelihoods)}")
         return loglikelihoods
 
     def _loglikelihood_tokens(
