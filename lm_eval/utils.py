@@ -5,7 +5,7 @@ import collections
 import functools
 import inspect
 import sys
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import torch
 
@@ -133,6 +133,60 @@ def get_rolling_token_windows(token_list, prefix_token, max_seq_len, context_len
             token_list[window_end - window_pred_len : window_end],
         )
         predicted += window_pred_len
+
+def split_and_pad_windows(
+    windows: List[Tuple[str, str]], pad_token_id: int, max_seq_len: int
+) -> Tuple[List[int], List[int]]:
+    """Splits and pads a sequence of rolling context and continuation windows
+    from `get_rolling_token_windows`.
+
+    Example:
+        [
+            ([1] , [23, 19, 3]),  # (context, continuation)
+            ([43], [2, 4]])
+        ]
+
+    Output:
+        [
+            [[1],[43]],                # Split & padded contexts.
+            [[23, 19, 3], [2, 4, 1]]`  # Split & padded continuations.
+        ]
+        where `1` = `pad_token` id.
+
+    Args:
+        windows (List[Tuple[str, str]]):
+            A generator of rolling `(context, continuation)` token windows
+            (tuples).
+        pad_token_id (int):
+            The token id to pad with.
+        max_seq_len (int):
+            The maximum sequence length of the model or a length we want to use.
+
+    Returns:
+        A tuple of (context, continuation) padding windows.
+    """
+    contexts, continuations = zip(*windows)
+    contexts, continuations = list(contexts), list(continuations)
+
+    # Pad contexts:
+    rollover_context = contexts[-1]
+    rollover_context_size = len(rollover_context)
+    # Handle empty final context token list - just add 1 token.
+    if rollover_context_size == 0:
+        contexts[-1] += [pad_token_id]
+    elif rollover_context_size > 1:
+        for i in range(len(contexts[:-1])):
+            contexts[i] += [pad_token_id] * (rollover_context_size - len(contexts[i]))
+
+    # Pad continuations:
+    rollover_continuation = continuations[-1]
+    rollover_continuation_size = len(rollover_continuation)
+    is_multiple_windows = len(continuations) > 1
+    if rollover_continuation_size < max_seq_len and is_multiple_windows:
+        continuations[-1] = rollover_continuation + [pad_token_id] * (
+            max_seq_len - rollover_continuation_size
+        )
+    return contexts, continuations
 
 
 def make_disjoint_window(pair):
