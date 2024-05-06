@@ -16,7 +16,7 @@ from lm_eval import tasks, evaluator
 import sys
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
-from noisers.main import parse_noise_params, get_noisers
+from noisers.main import parse_noise_params, get_noisers, record_noiser_artifacts
 from noisers.utils.misc import get_lang_name
 
 
@@ -174,6 +174,8 @@ def main():
         noiser_classes=noiser_classes,
         dataset_outfile=args.dataset_outfile,
     )
+
+    record_noiser_artifacts(noiser_classes)
 
     ### TODO: Format output file and results according to required organization
 
