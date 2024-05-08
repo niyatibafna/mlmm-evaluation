@@ -132,13 +132,14 @@ def noise_llm_inputs_before(doc, task, noise_classes):
         # We will also noise the language specific entailment words
 
         ##### NOTE: This only makes sense for noisers that apply the same noise to a word over multiple occurrences.
-        ##### Otherwise, this becomes weird. 
+        ##### Otherwise, this becomes weird, because we are noising the same four words differently over each sample.
+        ##### XNLI is extra sensitive to these four words since they appear in each sample. 
 
         # QUESTION_WORD = None  # 'right'
         # ENTAILMENT_LABEL = None  # 'Yes'
         # NEUTRAL_LABEL = None  # 'Also'
         # CONTRADICTION_LABEL = None  # 'No'
-        doc["label"] = apply_noisers(doc["label"], noise_classes)
+        # doc["label"] = apply_noisers(doc["label"], noise_classes)
         task.QUESTION_WORD = apply_noisers(task.QUESTION_WORD, noise_classes)
         task.ENTAILMENT_LABEL = apply_noisers(task.ENTAILMENT_LABEL, noise_classes)
         task.NEUTRAL_LABEL = apply_noisers(task.NEUTRAL_LABEL, noise_classes)
@@ -380,6 +381,16 @@ def evaluate(
         versions[task_name] = task.VERSION
         # default to test doc, fall back to val doc if validation unavailable
         # TODO: the test-fallback-to-val system isn't final, we should revisit it at some point
+        
+
+        # ### TESTING ON VALIDATION SET, CHANGE BACK!!!!###
+        # if task.has_validation_docs():
+        #     print('Using validation docs for task "{}"'.format(task_name))
+        #     task_set = "val"  # Required for caching in the decontamination
+        #     task_doc_func = task.validation_docs
+        # else:
+        #     raise RuntimeError("Task has neither test_docs nor validation_docs")        
+
         if task.has_test_docs():
             print('Using test docs for task "{}"'.format(task_name))
             task_doc_func = task.test_docs
