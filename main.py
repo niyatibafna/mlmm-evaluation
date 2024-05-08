@@ -100,9 +100,9 @@ def build_description_dict(task_names):
             tgt_lang_code = task_name.split("-")[2]
             src_lang_name = get_lang_name(src_lang_code)
             tgt_lang_name = get_lang_name(tgt_lang_code)
-            description_dict[task_name] = f"Translate from {src_lang_name} to {tgt_lang_name}:\n"
+            description_dict[task_name] = f"Translate from a dialect of {src_lang_name} to {tgt_lang_name}:\n"
         elif "story_cloze" in task_name:
-            # description_dict[task_name] = "Choose the correct ending to the story: "
+            # description_dict[task_name] = "Choose the best ending to the story out of the given options: "
             description_dict[task_name] = ""
         elif "nli" in task_name:
             description_dict[task_name] = ""
