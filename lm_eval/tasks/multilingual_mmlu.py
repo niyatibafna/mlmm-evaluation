@@ -43,7 +43,7 @@ def create_task(lang):
 
 class GeneralHendrycksTest(MultipleChoiceTask):
     VERSION = 0
-    NUM_FEW_SHOT = 25
+    NUM_FEW_SHOT = 0
     DATASET_PATH = "datasets/m_mmlu"
     DATASET_NAME = None
 

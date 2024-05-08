@@ -51,7 +51,7 @@ class MultilingualARC(MultipleChoiceTask):
         self.lang = lang
         self.DATASET_NAME = f"arc_{lang}"
         self.DATASET_PATH = 'datasets/m_arc'
-        self.NUM_FEW_SHOT = 25
+        self.NUM_FEW_SHOT = 0
         super().__init__(**kwargs)
 
     def has_training_docs(self):
