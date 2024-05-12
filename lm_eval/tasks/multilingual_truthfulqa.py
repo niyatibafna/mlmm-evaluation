@@ -60,7 +60,7 @@ QA_PROMPT = (
     "A: The 1992 Olympics were held in Barcelona, Spain."
 )
 
-LANGS = 'ar,bn,ca,da,de,es,eu,fr,gu,hi,hr,hu,hy,id,it,kn,ml,mr,ne,nl,pt,ro,ru,sk,sr,sv,ta,te,uk,vi,zh'.split(',')
+LANGS = 'ar,bn,ca,da,de,en,es,eu,fr,gu,hi,hr,hu,hy,id,it,kn,ml,mr,ne,nl,pt,ro,ru,sk,sr,sv,ta,te,uk,vi,zh'.split(',')
 
 
 def create_all_tasks():
@@ -74,8 +74,12 @@ def create_all_tasks():
 def create_task(lang):
     class ATest(TruthfulQAMultipleChoice):
         def __init__(self):
-
-            self.DATASET_NAME = f"truthfulqa_{lang}"
+            if lang == "en":
+                VERSION = 1
+                self.DATASET_NAME = "multiple_choice"
+                self.DATASET_PATH = "truthful_qa"
+            else:
+                self.DATASET_NAME = f"truthfulqa_{lang}"
             super().__init__(lang)
 
     return ATest
