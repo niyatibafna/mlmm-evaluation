@@ -68,6 +68,7 @@ class TruthfulQAMultipleChoice(Task):
     VERSION = 1
     DATASET_PATH = "truthful_qa"
     DATASET_NAME = "multiple_choice"
+    NUM_FEW_SHOT = 0
 
     def has_training_docs(self):
         return False
