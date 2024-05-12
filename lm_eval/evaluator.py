@@ -123,7 +123,7 @@ def noise_llm_inputs_before(doc, task, noise_classes):
         doc["sentence_quiz1"] = apply_noisers(doc["sentence_quiz1"], noise_classes)
         doc["sentence_quiz2"] = apply_noisers(doc["sentence_quiz2"], noise_classes)
     
-    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase):
+    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase) or isinstance(task, lm_eval.tasks.xnli_mcq.XNLIMCQBase):
 
         # Noise the premise and hypothesis
         doc["premise"] = apply_noisers(doc["premise"], noise_classes)
