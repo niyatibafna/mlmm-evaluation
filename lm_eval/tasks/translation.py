@@ -254,6 +254,7 @@ class NLLBGeneralTranslationTask(GeneralTranslationTask):
             "es" : "spa_Latn",
             "id" : "ind_Latn",
             "ru" : "rus_Cyrl",
+            "fr" : "fra_Latn",
         }
         # This is hardcoded for now
         self.nllb_dataset_path = "/export/b08/nbafna1/data/flores200_dataset/"

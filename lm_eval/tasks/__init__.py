@@ -62,6 +62,7 @@ from . import winogrande
 from . import wsc273
 from . import xcopa
 from . import xnli
+from . import xnli_mcq
 from . import xstorycloze
 from . import xwinograd
 
@@ -84,7 +85,7 @@ selected_translation_benchmarks = {
 
 ### TODO: Add all language pairs of interest
 flores200_translation_benchmarks = {
-    "flores200" :  ["hi-en", "de-en", "es-en", "id-en", "ar-en", "ru-en", "en-en"]
+    "flores200" :  ["hi-en", "de-en", "es-en", "id-en", "ar-en", "ru-en", "en-en", "fr-en"]
 }
 
 # 319 total
@@ -104,6 +105,10 @@ TASK_REGISTRY = {
     **multilingual_truthfulqa.create_all_tasks(),
     **multilingual_hellaswag.create_all_tasks(),
 
+    # ARC
+    "arc":arc.ARCChallenge,
+    # Truthful QA
+    "truthfulqa": truthfulqa.TruthfulQAMultipleChoice,
     # GLUE
     "cola": glue.CoLA,
     "mnli": glue.MNLI,
@@ -338,6 +343,7 @@ TASK_REGISTRY = {
     **xwinograd.create_all_tasks(),
     **pawsx.construct_tasks(),
     **xnli.construct_tasks(),
+    **xnli_mcq.construct_tasks(),
     **mgsm.construct_tasks(),
 }
 
