@@ -67,6 +67,7 @@ class StoryCloze(Task):
         return self.dataset["test"]
 
     def doc_to_text(self, doc):
+        '''Story Continuation and Options'''
 
         text = "What is a possible continuation for the following story ? \n\n"
         story = "\n".join(
@@ -80,6 +81,19 @@ class StoryCloze(Task):
         options = "Choose from the following options: \n" + "\n".join(
         [doc["sentence_quiz1"], doc["sentence_quiz2"]] ) + "\n\n"
         return text + story + options 
+    # def doc_to_text(self, doc):
+    #     '''
+    #     Answer Given Options
+    #     {{input_sentence_1}} {{input_sentence_2}} {{input_sentence_3}} {{input_sentence_4}}
+    #     What is a possible continuation for the story given the following options ?
+    #     - {{answer_choices | join("\n- ")}} ||| {{answer_choices[answer_right_ending
+    #     -1]}}
+    #     '''
+    #     prompt = f"{doc['input_sentence_1']} {doc['input_sentence_2']} {doc['input_sentence_3']} {doc['input_sentence_4']} \n\
+    #     What is a possible continuation for the story given the following options ? \n \
+    #     - {doc['sentence_quiz1']} \n {doc['sentence_quiz2']}"
+    #     return prompt
+        
 
 
     def should_decontaminate(self):
