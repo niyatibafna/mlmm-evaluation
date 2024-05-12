@@ -31,6 +31,7 @@ class HellaSwag(MultipleChoiceTask):
     VERSION = 0
     DATASET_PATH = "hellaswag"
     DATASET_NAME = None
+    NUM_FEW_SHOT = 0
 
     def has_training_docs(self):
         return True

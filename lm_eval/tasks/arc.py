@@ -30,6 +30,7 @@ class ARCEasy(MultipleChoiceTask):
     VERSION = 0
     DATASET_PATH = "ai2_arc"
     DATASET_NAME = "ARC-Easy"
+    NUM_FEW_SHOT = 0
 
     def has_training_docs(self):
         return True
@@ -77,3 +78,4 @@ class ARCEasy(MultipleChoiceTask):
 class ARCChallenge(ARCEasy):
     DATASET_PATH = "ai2_arc"
     DATASET_NAME = "ARC-Challenge"
+    NUM_FEW_SHOT = 0
