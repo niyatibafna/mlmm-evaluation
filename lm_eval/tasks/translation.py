@@ -245,6 +245,8 @@ class NLLBGeneralTranslationTask(GeneralTranslationTask):
     # For now, we are hardcoding the paths to the NLLB dataset
     # And assuming that the data are already downloaded at that path.
 
+    # ANY LANGUAGE ADDED HERE ALSO NEEDS TO BE ADDED IN tasks/__init__.py so that the task can be found
+
     def __init__(self, language_pair=None):
         lang_to_filename = {
             "en" : "eng_Latn",
@@ -255,6 +257,26 @@ class NLLBGeneralTranslationTask(GeneralTranslationTask):
             "id" : "ind_Latn",
             "ru" : "rus_Cyrl",
             "fr" : "fra_Latn",
+            "bho": "bho_Deva",
+            "awa": "awa_Deva",
+            "mag": "mag_Deva",
+            "mai": "mai_Deva",
+            "hne": "hne_Deva",
+            "zsm": "zsm_Latn",
+            "oci": "oci_Latn",
+            "glg": "glg_Latn",
+            "dan": "dan_Latn",
+            "nor": "nor_Latn",
+            "isl": "isl_Latn",
+            "swe": "swe_Latn",
+            "acm": "acm_Arab",
+            "acq": "acq_Arab",
+            "aeb": "aeb_Arab",
+            "ajp": "ajp_Arab",
+            "apc": "apc_Arab",
+            "ars": "ars_Arab",
+            "ary": "ary_Arab",
+            "arz": "arz_Arab",
         }
         # This is hardcoded for now
         self.nllb_dataset_path = "/export/b08/nbafna1/data/flores200_dataset/"

@@ -84,8 +84,40 @@ selected_translation_benchmarks = {
 }
 
 ### TODO: Add all language pairs of interest
+# ANY LANGUAGE ADDED HERE ALSO NEEDS TO BE ADDED IN translation.py so that the files can be found
+lang_to_filename = {
+            "en" : "eng_Latn",
+            "hi" : "hin_Deva",
+            "ar" : "arb_Arab",
+            "de" : "deu_Latn",
+            "es" : "spa_Latn",
+            "id" : "ind_Latn",
+            "ru" : "rus_Cyrl",
+            "fr" : "fra_Latn",
+            "bho": "bho_Deva",
+            "awa": "awa_Deva",
+            "mag": "mag_Deva",
+            "mai": "mai_Deva",
+            "hne": "hne_Deva",
+            "zsm": "zsm_Latn",
+            "oci": "oci_Latn",
+            "glg": "glg_Latn",
+            "dan": "dan_Latn",
+            "nor": "nor_Latn",
+            "isl": "isl_Latn",
+            "swe": "swe_Latn",
+            "acm": "acm_Arab",
+            "acq": "acq_Arab",
+            "aeb": "aeb_Arab",
+            "ajp": "ajp_Arab",
+            "apc": "apc_Arab",
+            "ars": "ars_Arab",
+            "ary": "ary_Arab",
+            "arz": "arz_Arab",
+
+        }
 flores200_translation_benchmarks = {
-    "flores200" :  ["hi-en", "de-en", "es-en", "id-en", "ar-en", "ru-en", "en-en", "fr-en"]
+    "flores200" :  [f"{src}-en" for src in lang_to_filename.keys()]
 }
 
 # 319 total

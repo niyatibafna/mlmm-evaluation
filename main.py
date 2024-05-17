@@ -17,7 +17,7 @@ import sys
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/')
 sys.path.append('/export/b08/nbafna1/projects/llm-robustness-to-xlingual-noise/noisers/')
 from noisers.main import parse_noise_params, get_noisers, record_noiser_artifacts
-from noisers.utils.misc import get_lang_name
+from noisers.utils.misc import get_lang_name, related_to_lang
 
 
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -88,18 +88,32 @@ def pattern_match(patterns, source_list):
             task_names.add(matching)
     return sorted(list(task_names))
 
-def build_description_dict(task_names):
+def build_description_dict(task_names, real_dialect_as_src=False):
     '''
     Build a description dictionary for the tasks in task_names, containing custom descriptions for each task.
     '''
+
+    known_languages = {"es", "ar", "en", "de", "fr", "hi", "id"}
+
     description_dict = dict()
     for task_name in task_names:
         if "flores" in task_name:
             # Get the language code from the task name
             src_lang_code = task_name.split("-")[1]
             tgt_lang_code = task_name.split("-")[2]
+
+            if src_lang_code not in known_languages:
+                real_dialect_as_src = True
+
+            if real_dialect_as_src:
+                # If we are translating from a real dialect, then we will use the name 
+                # of the related high-resource neighbour present in the model for the promp
+                # to be consistent with the settings in our noising experiments
+                src_lang_code = related_to_lang(src_lang_code)
+            
             src_lang_name = get_lang_name(src_lang_code)
-            tgt_lang_name = get_lang_name(tgt_lang_code)
+            tgt_lang_name = get_lang_name(tgt_lang_code)    
+
             description_dict[task_name] = f"Translate from a dialect of {src_lang_name} to {tgt_lang_name}:\n"
         elif "story_cloze" in task_name:
             # description_dict[task_name] = "Choose the best ending to the story out of the given options: "
