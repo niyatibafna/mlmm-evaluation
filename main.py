@@ -185,12 +185,13 @@ def main():
 
     if args.output_path:
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-        if os.path.exists(args.output_path):
-            with open(args.output_path, "r") as f:
-                file = json.load(f)
-                file[args.all_noise_params_str] = results
-        else:
-            file = {args.all_noise_params_str: results}
+        file = {args.all_noise_params_str: results}
+        # if os.path.exists(args.output_path):
+        #     with open(args.output_path, "r") as f:
+        #         file = json.load(f)
+        #         file[args.all_noise_params_str] = results
+        # else:
+        #     file = {args.all_noise_params_str: results}
         with open(args.output_path, "w") as f:
             json.dump(file, f, indent=2, ensure_ascii=False)
     if results:
