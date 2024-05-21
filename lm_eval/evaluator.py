@@ -140,10 +140,12 @@ def noise_llm_inputs_before(doc, task, noise_classes):
         # NEUTRAL_LABEL = None  # 'Also'
         # CONTRADICTION_LABEL = None  # 'No'
         # doc["label"] = apply_noisers(doc["label"], noise_classes)
-        task.QUESTION_WORD = apply_noisers(task.QUESTION_WORD, noise_classes)
-        task.ENTAILMENT_LABEL = apply_noisers(task.ENTAILMENT_LABEL, noise_classes)
-        task.NEUTRAL_LABEL = apply_noisers(task.NEUTRAL_LABEL, noise_classes)
-        task.CONTRADICTION_LABEL = apply_noisers(task.CONTRADICTION_LABEL, noise_classes)
+
+
+        # task.QUESTION_WORD = apply_noisers(task.QUESTION_WORD, noise_classes)
+        # task.ENTAILMENT_LABEL = apply_noisers(task.ENTAILMENT_LABEL, noise_classes)
+        # task.NEUTRAL_LABEL = apply_noisers(task.NEUTRAL_LABEL, noise_classes)
+        # task.CONTRADICTION_LABEL = apply_noisers(task.CONTRADICTION_LABEL, noise_classes)
         
     else:
         # raise NotImplementedError(f"Task type {type(task)} not supported yet.")
