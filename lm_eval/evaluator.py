@@ -49,7 +49,7 @@ def write_out_task_dataset(doc, task, file_obj):
         file_obj.write(f"{doc['sentence_quiz2']}\n")
         file_obj.write("\n")
     
-    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase):
+    elif isinstance(task, lm_eval.tasks.xnli.XNLIBase) or isinstance(task, lm_eval.tasks.xnli_mcq.XNLIMCQBase):
 
         file_obj.write(f"{doc['premise']}\n")
         file_obj.write(f"{doc['hypothesis']}\n")
